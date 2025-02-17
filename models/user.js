@@ -1,7 +1,6 @@
 import mongoose, { Schema } from "mongoose";
-import mongooseAggregatePaginate from "mongoose-aggregate-paginate-v2";
 import bcrypt from "bcrypt";
-import jwt from "jsonwebtoken"
+import jwt from "jsonwebtoken";
 
 const userSchema = new Schema(
     {
@@ -26,6 +25,12 @@ const userSchema = new Schema(
             trim: true,
         },
         profile_photo: {
+            type: String,
+        },
+        cover_photo: {
+            type: String,
+        },
+        refresh_token: {
             type: String,
         },
         posts: [
@@ -63,17 +68,15 @@ userSchema.methods.generateAccessToken = async function () {
 };
 
 userSchema.methods.generateRefreshToken = async function () {
-  jwt.sign(
-    {
-      _id: this._id,
-    },
-    process.env.REFRESH_TOKEN_SECRET_KEY,
-    {
-      expiresIn: REFRESH_TOKEN_EXP_TIME,
-    }
-  );
+    jwt.sign(
+        {
+            _id: this._id,
+        },
+        process.env.REFRESH_TOKEN_SECRET_KEY,
+        {
+            expiresIn: REFRESH_TOKEN_EXP_TIME,
+        }
+    );
 };
-
-userSchema.plugin(mongooseAggregatePaginate);
 
 export const User = mongoose.model("User", userSchema);
