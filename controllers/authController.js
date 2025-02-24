@@ -1,6 +1,7 @@
 import { User } from "../models/user.js";
 import { uploadFileToCloudinary } from "../utils/cloudinary.js";
 import fs from "fs";
+import jwt from "jsonwebtoken";
 
 export const registerController = async (req, res) => {
     const { username, email, password } = req.body;
@@ -65,8 +66,8 @@ const generateAccessTokenAndRefreshToken = async (userId) => {
             return res.status(404).json({ message: "No user found." });
         }
 
-        const accessToken = existingUser.generateAccessToken();
-        const refreshToken = existingUser.generateRefreshToken();
+        const accessToken = await existingUser.generateAccessToken();
+        const refreshToken = await existingUser.generateRefreshToken();
 
         existingUser.refresh_token = refreshToken;
         await existingUser.save({ validateBeforeSave: false });
@@ -96,7 +97,7 @@ export const loginController = async (req, res) => {
     const isPassMatch = await existingUser.isPasswordMatch(password);
 
     if (!isPassMatch) {
-        return res.status(401, "Invaild Credentials.");
+        return res.status(401).json({ message: "Invaild Credentials." });
     }
 
     const { accessToken, refreshToken } =
@@ -116,4 +117,47 @@ export const loginController = async (req, res) => {
         .cookie("accessToken", accessToken, options)
         .cookie("refreshToken", refreshToken, options)
         .json({ user: loggedUser, message: "Login success." });
+};
+
+export const generateNewRefreshToken = async (req, res) => {
+    const incomingRefreshToken = req.cookie.refreshToken || req.body.refreshToken;
+
+    if (!incomingRefreshToken) {
+        return res.status(401).json({ message: "No refresh Token" });
+    }
+
+    try {
+        const decodedToken = jwt.verify(
+            refreshToken,
+            process.env.REFRESH_TOKEN_SECRET_KEY
+        );
+
+        const existingUser = User.findById(decodedToken?._id);
+        if (!existingUser) {
+            return res.status(404).json({
+                message: "No user found.",
+            });
+        }
+
+        if (incomingRefreshToken !== existingUser.refresh_token) {
+            return res.status(401).json({ message: "Invalid refresh token." });
+        }
+
+        const { accessToken, refreshToken } =
+            await generateAccessTokenAndRefreshToken(existingUser._id);
+
+        const options = {
+            httpOnly: true,
+            secure: process.env.NODE_ENV === "production",
+        };
+
+        return res
+            .status(200)
+            .cookie("accessToken", accessToken, options)
+            .cookie("refreshToken", refreshToken, options)
+            .json({ message: "Token updated." });
+    } catch (error) {
+        console.log(error);
+        return res.status(500).json({ message: "Something went wrong." });
+    }
 };
