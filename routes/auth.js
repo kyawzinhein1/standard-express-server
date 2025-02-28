@@ -4,6 +4,8 @@ import {
   loginController,
   generateNewRefreshToken,
   logoutController,
+  changePasswordController,
+  changeUsernameController,
 } from "../controllers/authController.js";
 import { upload } from "../middlewares/multerStorage.js";
 import { verifyJWT } from "../middlewares/auth.js";
@@ -24,5 +26,9 @@ router.post("/login", loginController);
 router.post("/refresh", generateNewRefreshToken);
 
 router.post("/logout", verifyJWT, logoutController);
+
+router.post("/change-password", verifyJWT, changePasswordController);
+
+router.post("/change-username", verifyJWT, changeUsernameController);
 
 export default router;

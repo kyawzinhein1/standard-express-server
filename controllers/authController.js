@@ -1,4 +1,3 @@
-import { secureHeapUsed } from "crypto";
 import { User } from "../models/user.js";
 import { uploadFileToCloudinary } from "../utils/cloudinary.js";
 import fs from "fs";
@@ -194,6 +193,73 @@ export const logoutController = async (req, res) => {
             .json({ message: `${req.user.username} logout successfully.` });
     } catch (error) {
         console.log(error);
+        return res.status(500).json({ message: "Something went wrong." });
+    }
+};
+
+export const changePasswordController = async (req, res) => {
+    try {
+        const existingUser = await User.findById(req.user._id);
+
+        if (!existingUser) {
+            return res.status(404).json({ message: "User not found." });
+        }
+
+        const { old_password, new_password } = req.body;
+        if (!old_password || !new_password) {
+            return res
+                .status(400)
+                .json({ message: "Both old and new passwords are required." });
+        }
+
+        // Compare the old password
+        const isPassMatch = await existingUser.isPasswordMatch(old_password);
+        if (!isPassMatch) {
+            return res.status(401).json({ message: "Wrong Credentials." });
+        }
+
+        // Assign new password
+        existingUser.password = new_password;
+        await existingUser.save();
+
+        return res
+            .status(200)
+            .json({ message: "New password is saved successfully." });
+    } catch (error) {
+        console.error(error);
+        return res.status(500).json({ message: "Something went wrong." });
+    }
+};
+
+export const changeUsernameController = async (req, res) => {
+    try {
+        const existingUser = await User.findById(req.user._id);
+        
+        if (!existingUser) {
+            return res.status(404).json({ message: "User not found." });
+        }
+
+        const { new_username, password } = req.body;
+        if (!new_username || !password) {
+            return res
+                .status(400)
+                .json({ message: "New username and password are required." });
+        }
+
+        const isPassMatch = await existingUser.isPasswordMatch(password);
+        if (!isPassMatch) {
+            return res.status(401).json({ message: "Wrong Credentials." });
+        }
+
+        existingUser.username = new_username;
+        await existingUser.save();
+
+        return res
+            .status(200)
+            .json({ message: "Change username successfully." });
+
+    } catch (error) {
+        console.error(error);
         return res.status(500).json({ message: "Something went wrong." });
     }
 };
